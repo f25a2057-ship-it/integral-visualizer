@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Definite Integral Visualizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        canvas { touch-action: none; background: #f9fafb; border-radius: 8px; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center p-4">
+
+    <div class="bg-white p-6 rounded-xl shadow-lg w-full max-w-2xl">
+        <h1 class="text-2xl font-bold text-gray-800 mb-4">Definite Integral Visualizer</h1>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Function f(x)</label>
+                <input type="text" id="funcInput" value="x^2" class="mt-1 w-full p-2 border rounded border-gray-300 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Lower (a)</label>
+                    <input type="number" id="lowerBound" value="0" class="mt-1 w-full p-2 border rounded border-gray-300">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Upper (b)</label>
+                    <input type="number" id="upperBound" value="2" class="mt-1 w-full p-2 border rounded border-gray-300">
+                </div>
+            </div>
+        </div>
+
+        <button onclick="render()" class="w-full bg-blue-600 text-white py-2 rounded font-semibold hover:bg-blue-700 transition">Calculate & Graph</button>
+        
+        <div id="result" class="mt-4 p-3 bg-blue-50 text-blue-800 rounded font-bold text-center"></div>
+
+        <canvas id="graphCanvas" class="w-full h-80 mt-4 border"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('graphCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function evaluateFunc(x, funcStr) {
+            try {
+                // Basic math parsing
+                const expression = funcStr.replace(/\^/g, '**').replace(/sin/g, 'Math.sin').replace(/cos/g, 'Math.cos').replace(/exp/g, 'Math.exp');
+                return new Function('x', `return ${expression}`)(x);
+            } catch (e) { return 0; }
+        }
+
+        function render() {
+            const funcStr = document.getElementById('funcInput').value;
+            const a = parseFloat(document.getElementById('lowerBound').value);
+            const b = parseFloat(document.getElementById('upperBound').value);
+
+            // Numerical integration (Simpson's rule approximation)
+            const n = 1000;
+            const h = (b - a) / n;
+            let sum = evaluateFunc(a, funcStr) + evaluateFunc(b, funcStr);
+            for (let i = 1; i < n; i++) {
+                sum += (i % 2 === 0 ? 2 : 4) * evaluateFunc(a + i * h, funcStr);
+            }
+            const integral = (h / 3) * sum;
+            document.getElementById('result').innerText = `Result of ∫ f(x)dx: ${integral.toFixed(4)}`;
+
+            // Graphing
+            const w = canvas.width = canvas.offsetWidth;
+            const h_c = canvas.height = canvas.offsetHeight;
+            ctx.clearRect(0, 0, w, h_c);
+            
+            const scale = 40;
+            const midX = w / 2;
+            const midY = h_c / 2;
+
+            // Draw Axes
+            ctx.beginPath();
+            ctx.strokeStyle = '#ccc';
+            ctx.moveTo(0, midY); ctx.lineTo(w, midY);
+            ctx.moveTo(midX, 0); ctx.lineTo(midX, h_c);
+            ctx.stroke();
+
+            // Draw Area
+            ctx.fillStyle = 'rgba(59, 130, 246, 0.3)';
+            ctx.beginPath();
+            ctx.moveTo(midX + a * scale, midY);
+            for (let x = a; x <= b; x += 0.05) {
+                ctx.lineTo(midX + x * scale, midY - evaluateFunc(x, funcStr) * scale);
+            }
+            ctx.lineTo(midX + b * scale, midY);
+            ctx.closePath();
+            ctx.fill();
+
+            // Draw Function line
+            ctx.beginPath();
+            ctx.strokeStyle = '#2563eb';
+            ctx.lineWidth = 2;
+            for (let x = -w / (2 * scale); x <= w / (2 * scale); x += 0.05) {
+                const y = evaluateFunc(x, funcStr);
+                if (x === -w / (2 * scale)) ctx.moveTo(midX + x * scale, midY - y * scale);
+                else ctx.lineTo(midX + x * scale, midY - y * scale);
+            }
+            ctx.stroke();
+        }
+
+        window.onload = render;
+    </script>
+</body>
+</html>
